@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiNube — Transferencia de Archivos</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg:      #0f0f13;
+    --surface: #18181f;
+    --border:  #2a2a36;
+    --accent:  #7c6dfa;
+    --accent2: #a78bfa;
+    --text:    #e8e8f0;
+    --muted:   #6b6b80;
+    --success: #34d399;
+    --error:   #f87171;
+    --radius:  12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 60px;
+  }
+
+  header { text-align: center; margin-bottom: 48px; }
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; letter-spacing: 4px;
+    text-transform: uppercase; color: var(--accent2); margin-bottom: 12px;
+  }
+  h1 { font-size: clamp(28px,5vw,42px); font-weight: 600; letter-spacing: -1px; line-height: 1.1; }
+  h1 span {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .subtitle { color: var(--muted); margin-top: 8px; font-size: 14px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); width: 100%; max-width: 580px; padding: 32px;
+  }
+
+  /* LOGIN */
+  #loginView { display: flex; flex-direction: column; gap: 14px; }
+  #loginView h2 { font-size: 18px; font-weight: 500; }
+  #loginView p  { font-size: 13px; color: var(--muted); }
+
+  .field label {
+    display: block; font-size: 11px; font-family: 'Space Mono', monospace;
+    letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; color: var(--text);
+    font-family: 'Space Grotesk', sans-serif; font-size: 15px; outline: none; transition: border-color .2s;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .field .hint { font-size: 11px; color: var(--muted); margin-top: 5px; font-family: 'Space Mono', monospace; }
+
+  #errorMsg { color: var(--error); font-size: 13px; text-align: center; min-height: 18px; }
+
+  .divider {
+    display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px;
+    font-family: 'Space Mono', monospace; letter-spacing: 1px;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 20px; border-radius: 8px; border: none;
+    font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: opacity .2s, transform .1s;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+  .btn-primary:hover:not(:disabled) { opacity: .85; }
+  .btn-ghost {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text); font-size: 13px; padding: 8px 14px;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent2); }
+  .btn-danger {
+    background: transparent; border: 1px solid var(--error);
+    color: var(--error); font-size: 12px; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .btn-danger:hover { background: rgba(248,113,113,.08); }
+
+  /* MAIN */
+  #mainView { display: none; flex-direction: column; gap: 24px; }
+  .section-title {
+    font-family: 'Space Mono', monospace; font-size: 10px;
+    letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+  }
+
+  /* DROPZONE */
+  .dropzone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 36px 24px; text-align: center; cursor: pointer;
+    transition: border-color .2s, background .2s; position: relative;
+  }
+  .dropzone:hover, .dropzone.drag-over { border-color: var(--accent); background: rgba(124,109,250,.05); }
+  .dropzone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .dz-icon { font-size: 36px; margin-bottom: 10px; }
+  .dz-text { font-size: 14px; color: var(--muted); }
+  .dz-text strong { color: var(--text); }
+
+  /* QUEUE */
+  #queue { display: flex; flex-direction: column; gap: 10px; }
+  .queue-item {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .queue-item-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .qi-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .qi-size { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 4px; transition: width .3s; width: 0%;
+  }
+  .qi-status { font-size: 11px; font-family: 'Space Mono', monospace; }
+  .status-waiting   { color: var(--muted); }
+  .status-uploading { color: var(--accent2); }
+  .status-done      { color: var(--success); }
+  .status-error     { color: var(--error); }
+
+  /* FILE LIST */
+  #fileList { display: flex; flex-direction: column; gap: 8px; }
+  .file-item {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+  }
+  .file-icon { font-size: 22px; flex-shrink: 0; }
+  .file-info { flex: 1; min-width: 0; }
+  .file-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-meta { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'Space Mono', monospace; }
+  .file-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .btn-download {
+    background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.3);
+    color: var(--success); font-size: 12px; padding: 6px 12px; border-radius: 6px;
+    cursor: pointer; font-family: 'Space Grotesk', sans-serif; font-weight: 500;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: background .2s;
+  }
+  .btn-download:hover { background: rgba(52,211,153,.2); }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 20px; font-size: 13px;
+    transition: transform .3s; z-index: 100; white-space: nowrap; pointer-events: none;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.success { border-color: var(--success); color: var(--success); }
+  #toast.error   { border-color: var(--error);   color: var(--error);   }
+
+  /* BIN ID ALERT */
+  #binAlert {
+    background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.3);
+    border-radius: 8px; padding: 14px 16px; font-size: 13px; line-height: 1.7; display: none;
+  }
+  #binAlert strong { color: var(--success); }
+  #binIdBox {
+    font-family: 'Space Mono', monospace; font-size: 13px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 12px; margin: 8px 0;
+    color: var(--accent2); word-break: break-all; user-select: all;
+  }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  hr { border: none; border-top: 1px solid var(--border); }
+  .empty { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; }
+  .empty-icon { font-size: 32px; margin-bottom: 8px; }
+  footer { margin-top: 32px; font-size: 11px; color: var(--muted); text-align: center; font-family: 'Space Mono', monospace; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">▲ MiNube</div>
+  <h1>Transferencia<br><span>de archivos</span></h1>
+  <p class="subtitle">Sube desde una PC, descarga desde cualquier otra.</p>
+</header>
+
+<div class="card">
+
+  <!-- ── LOGIN ── -->
+  <div id="loginView">
+    <div>
+      <h2>Acceso privado</h2>
+      <p>Ingresa tus credenciales para continuar. Nada de esto se guarda en el código.</p>
+    </div>
+
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="pwInput" placeholder="Tu contraseña personal">
+    </div>
+
+    <div class="divider">configuración jsonbin</div>
+
+    <div class="field">
+      <label>API Key de JSONBin</label>
+      <input type="password" id="apiKeyInput" placeholder="$2a$10$...">
+      <div class="hint">La encuentras en jsonbin.io → API Keys → Master Key</div>
+    </div>
+
+    <div class="field">
+      <label>Bin ID <span style="opacity:.5">(opcional la primera vez)</span></label>
+      <input type="text" id="binIdInput" placeholder="Déjalo vacío la primera vez">
+      <div class="hint">Después de la primera subida, el sistema te lo muestra aquí abajo</div>
+    </div>
+
+    <div id="errorMsg"></div>
+    <button class="btn btn-primary" onclick="login()">Entrar →</button>
+  </div>
+
+  <!-- ── MAIN ── -->
+  <div id="mainView">
+
+    <!-- Alerta de Bin ID nuevo -->
+    <div id="binAlert">
+      <strong>✅ ¡Bin creado correctamente!</strong><br>
+      Copia este ID y pégalo en el campo "Bin ID" cada vez que entres a la página:
+      <div id="binIdBox"></div>
+      Guárdalo en tu celular o en un bloc de notas para no perderlo.
+    </div>
+
+    <!-- Subir -->
+    <div>
+      <div class="section-title">↑ Subir archivos</div>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" multiple onchange="handleFiles(this.files)">
+        <div class="dz-icon">📦</div>
+        <div class="dz-text"><strong>Haz clic o arrastra aquí</strong><br>Cualquier tipo de archivo · Sin límite de tamaño</div>
+      </div>
+    </div>
+
+    <!-- Cola -->
+    <div id="queueSection" style="display:none">
+      <div class="section-title">Cola de subida</div>
+      <div id="queue"></div>
+      <div style="margin-top:12px">
+        <button class="btn btn-primary" id="uploadBtn" onclick="uploadAll()">Subir todos los archivos</button>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Lista compartida -->
+    <div>
+      <div class="toolbar">
+        <div class="section-title" style="margin-bottom:0">↓ Archivos disponibles</div>
+        <button class="btn btn-ghost" onclick="loadFiles()">↺ Actualizar</button>
+      </div>
+      <div id="fileList" style="margin-top:12px">
+        <div class="empty"><div class="empty-icon">☁️</div>Cargando...</div>
+      </div>
+    </div>
+
+    <hr>
+
+    <div style="text-align:right">
+      <button class="btn btn-ghost" style="font-size:12px" onclick="logout()">Cerrar sesión</button>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  Archivos en Gofile.io · Lista en JSONBin.io · Solo uso personal
+</footer>
+
+<div id="toast"></div>
+
+<script>
+// ── Variables de sesión (se llenan al hacer login) ────
+let SESSION_PASSWORD = "";
+let SESSION_API_KEY  = "";
+let SESSION_BIN_ID   = "";
+
+const JSONBIN_URL  = "https://api.jsonbin.io/v3/b";
+let pendingFiles   = [];
+
+// ── Login ─────────────────────────────────────────────
+function login() {
+  const pw     = document.getElementById("pwInput").value.trim();
+  const apiKey = document.getElementById("apiKeyInput").value.trim();
+  const binId  = document.getElementById("binIdInput").value.trim();
+
+  if (!pw) {
+    document.getElementById("errorMsg").textContent = "Escribe tu contraseña.";
+    return;
+  }
+  if (!apiKey) {
+    document.getElementById("errorMsg").textContent = "Escribe tu API Key de JSONBin.";
+    return;
+  }
+
+  // La contraseña puede ser cualquier cosa que el usuario elija —
+  // aquí simplemente la guardamos para verificar que coincida en ambas PCs.
+  // Si quieres cambiarla, simplemente usa una diferente al entrar.
+  SESSION_PASSWORD = pw;
+  SESSION_API_KEY  = apiKey;
+  SESSION_BIN_ID   = binId;
+
+  document.getElementById("errorMsg").textContent = "";
+  document.getElementById("loginView").style.display = "none";
+  document.getElementById("mainView").style.display  = "flex";
+  loadFiles();
+}
+
+document.getElementById("pwInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("apiKeyInput").focus();
+});
+document.getElementById("apiKeyInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("binIdInput").focus();
+});
+document.getElementById("binIdInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") login();
+});
+
+function logout() {
+  SESSION_PASSWORD = "";
+  SESSION_API_KEY  = "";
+  SESSION_BIN_ID   = "";
+  document.getElementById("mainView").style.display  = "none";
+  document.getElementById("loginView").style.display = "flex";
+  document.getElementById("pwInput").value    = "";
+  document.getElementById("apiKeyInput").value = "";
+  document.getElementById("binIdInput").value  = "";
+  document.getElementById("binAlert").style.display = "none";
+}
+
+// ── Drag & Drop ───────────────────────────────────────
+const dropzone = document.getElementById("dropzone");
+dropzone.addEventListener("dragover",  e => { e.preventDefault(); dropzone.classList.add("drag-over"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag-over"));
+dropzone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropzone.classList.remove("drag-over");
+  handleFiles(e.dataTransfer.files);
+});
+
+function handleFiles(fileList) {
+  pendingFiles = [...fileList];
+  const section = document.getElementById("queueSection");
+  const queue   = document.getElementById("queue");
+  queue.innerHTML = "";
+  if (!pendingFiles.length) { section.style.display = "none"; return; }
+  section.style.display = "block";
+
+  pendingFiles.forEach((f, i) => {
+    queue.innerHTML += `
+      <div class="queue-item" id="qi-${i}">
+        <div class="queue-item-row">
+          <span class="qi-name">${escHtml(f.name)}</span>
+          <span class="qi-size">${formatSize(f.size)}</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="prog-${i}"></div></div>
+        <span class="qi-status status-waiting" id="status-${i}">Esperando...</span>
+      </div>`;
+  });
+  document.getElementById("uploadBtn").disabled = false;
+}
+
+// ── Subida completa ───────────────────────────────────
+async function uploadAll() {
+  document.getElementById("uploadBtn").disabled = true;
+  const results = [];
+
+  for (let i = 0; i < pendingFiles.length; i++) {
+    const res = await uploadOneFile(pendingFiles[i], i);
+    if (res) results.push(res);
+  }
+
+  if (results.length) {
+    await saveFilesToCloud(results);
+    showToast("✓ Archivos subidos y guardados", "success");
+  }
+
+  pendingFiles = [];
+  document.getElementById("queueSection").style.display = "none";
+  document.getElementById("fileInput").value = "";
+  loadFiles();
+}
+
+// ── Subir un archivo a Gofile ─────────────────────────
+async function uploadOneFile(file, idx) {
+  setStatus(idx, "Buscando servidor...", "uploading");
+  try {
+    const srvRes  = await fetch("https://api.gofile.io/servers");
+    const srvData = await srvRes.json();
+    const server  = srvData.data.servers[0].name;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setStatus(idx, "Subiendo...", "uploading");
+
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `https://${server}.gofile.io/contents/uploadfile`);
+
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          document.getElementById(`prog-${idx}`).style.width = pct + "%";
+          setStatus(idx, `Subiendo... ${pct}%`, "uploading");
+        }
+      };
+
+      xhr.onload  = () => { try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error("Respuesta inválida")); } };
+      xhr.onerror = () => reject(new Error("Error de red. Verifica tu conexión."));
+      xhr.send(formData);
+    });
+
+    if (result.status !== "ok") throw new Error(result.message || "Error de Gofile");
+
+    document.getElementById(`prog-${idx}`).style.width = "100%";
+    setStatus(idx, "✓ Listo", "done");
+
+    return {
+      id:         result.data.fileId || result.data.id || Date.now().toString(),
+      name:       file.name,
+      size:       file.size,
+      link:       `https://gofile.io/d/${result.data.parentFolder}`,
+      uploadedAt: new Date().toISOString()
+    };
+  } catch (err) {
+    setStatus(idx, `✗ ${err.message}`, "error");
+    return null;
+  }
+}
+
+function setStatus(idx, msg, type) {
+  const el = document.getElementById(`status-${idx}`);
+  if (el) { el.textContent = msg; el.className = `qi-status status-${type}`; }
+}
+
+// ── JSONBin: guardar lista ────────────────────────────
+async function saveFilesToCloud(newFiles) {
+  try {
+    let currentFiles = await readBin();
+    const merged = [...newFiles, ...currentFiles];
+
+    if (!SESSION_BIN_ID) {
+      // Primera vez: crear el bin
+      const res  = await fetch(JSONBIN_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Master-Key": SESSION_API_KEY,
+          "X-Bin-Name":   "minube-files",
+          "X-Bin-Private":"true"
+        },
+        body: JSON.stringify({ files: merged })
+      });
+      const data = await res.json();
+      if (!data.metadata?.id) throw new Error("No se pudo crear el bin: " + JSON.stringify(data));
+
+      SESSION_BIN_ID = data.metadata.id;
+
+      // Mostrar el Bin ID al usuario dentro de la página
+      document.getElementById("binIdBox").textContent = SESSION_BIN_ID;
+      document.getElementById("binAlert").style.display = "block";
+    } else {
+      // Actualizar bin existente
+      await fetch(`${JSONBIN_URL}/${SESSION_BIN_ID}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Master-Key": SESSION_API_KEY
+        },
+        body: JSON.stringify({ files: merged })
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("Error al guardar en JSONBin: " + err.message, "error");
+  }
+}
+
+// ── JSONBin: leer lista ───────────────────────────────
+async function readBin() {
+  if (!SESSION_API_KEY || !SESSION_BIN_ID) return [];
+  try {
+    const res  = await fetch(`${JSONBIN_URL}/${SESSION_BIN_ID}/latest`, {
+      headers: { "X-Master-Key": SESSION_API_KEY }
+    });
+    const data = await res.json();
+    return data.record?.files || [];
+  } catch {
+    return [];
+  }
+}
+
+// ── JSONBin: borrar un archivo ────────────────────────
+async function deleteFile(id) {
+  let files = await readBin();
+  files = files.filter(f => f.id !== id);
+  try {
+    await fetch(`${JSONBIN_URL}/${SESSION_BIN_ID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Master-Key": SESSION_API_KEY },
+      body: JSON.stringify({ files })
+    });
+    showToast("Archivo removido", "success");
+    loadFiles();
+  } catch {
+    showToast("Error al eliminar", "error");
+  }
+}
+
+// ── Cargar y mostrar archivos ─────────────────────────
+async function loadFiles() {
+  const el = document.getElementById("fileList");
+  el.innerHTML = `<div class="empty"><div class="empty-icon">⏳</div>Cargando lista...</div>`;
+  const files = await readBin();
+  renderFiles(files);
+}
+
+function renderFiles(files) {
+  const el = document.getElementById("fileList");
+  if (!files.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>No hay archivos todavía.<br>Sube uno desde cualquier PC.</div>`;
+    return;
+  }
+  el.innerHTML = files.map(f => `
+    <div class="file-item">
+      <div class="file-icon">${fileIcon(f.name)}</div>
+      <div class="file-info">
+        <div class="file-name">${escHtml(f.name)}</div>
+        <div class="file-meta">${formatSize(f.size)} · ${formatDate(f.uploadedAt)}</div>
+      </div>
+      <div class="file-actions">
+        <a class="btn-download" href="${f.link}" target="_blank" rel="noopener">↓ Descargar</a>
+        <button class="btn-danger" onclick="deleteFile('${escHtml(f.id)}')">✕</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ── Utilidades ────────────────────────────────────────
+function formatSize(bytes) {
+  if (!bytes) return "—";
+  const k = 1024, sizes = ["B","KB","MB","GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function formatDate(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("es-PE", { day:"2-digit", month:"short", year:"numeric" });
+}
+
+function fileIcon(name) {
+  const ext = (name || "").split(".").pop().toLowerCase();
+  return { rar:"🗜️", zip:"🗜️", "7z":"🗜️", gz:"🗜️",
+    pdf:"📄", doc:"📝", docx:"📝", xls:"📊", xlsx:"📊", ppt:"📑", pptx:"📑",
+    mp4:"🎬", mkv:"🎬", avi:"🎬", mov:"🎬", mp3:"🎵", wav:"🎵", flac:"🎵",
+    jpg:"🖼️", jpeg:"🖼️", png:"🖼️", gif:"🖼️", exe:"⚙️", msi:"⚙️" }[ext] || "📦";
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+let toastTimer;
+function showToast(msg, type="success") {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = "", 3200);
+}
+</script>
+</body>
+</html>
